@@ -105,7 +105,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Build Gemini request
             genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            model = genai.GenerativeModel('gemini-2.5-flash')
 
             # Prepare parts: prompt + each image
             parts = [EXTRACTION_PROMPT + "\n\nFile allegati: " + ", ".join(f['name'] for f in files)]
