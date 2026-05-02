@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modulo A2 — Juares 21 Sub 18</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header>
+    <h1>Modulo A2 — Esenzione imposta di soggiorno</h1>
+    <p class="subtitle">Juares 21 Sub 18 · Via privata Monte Lungo 5, 20127 Milano</p>
+  </header>
+
+  <main>
+    <!-- STEP 1: Dati prenotazione -->
+    <section id="step-1" class="step active">
+      <h2>1. Dati prenotazione</h2>
+
+      <div class="form-row">
+        <label>
+          Check-in
+          <input type="date" id="checkin" required>
+        </label>
+        <label>
+          Check-out
+          <input type="date" id="checkout" required>
+        </label>
+      </div>
+
+      <label>
+        Riferimento prenotazione (opzionale)
+        <input type="text" id="ref" placeholder="es. progressivo Alloggiati Web n. 92">
+      </label>
+
+      <h3>Documenti d'identità del gruppo</h3>
+      <p class="hint">Carica tutti i documenti delle persone della prenotazione (carte d'identità, passaporti). Per i documenti italiani caricare sia fronte che retro.</p>
+
+      <div id="dropzone" tabindex="0">
+        <p>Trascina qui i file <strong>oppure</strong> <button type="button" id="pick">scegli dal computer</button></p>
+        <input type="file" id="files" multiple accept="image/*,.pdf" style="position:absolute; left:-9999px; opacity:0; width:1px; height:1px;">
+      </div>
+
+      <ul id="filelist"></ul>
+
+      <div class="actions">
+        <button id="extract-btn" disabled>Analizza documenti →</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: Conferma dati -->
+    <section id="step-2" class="step">
+      <h2>2. Verifica i dati estratti</h2>
+      <p class="hint">Controlla i dati estratti dai documenti. Correggi eventuali errori prima di generare il modulo.</p>
+
+      <div id="extracted-list"></div>
+
+      <h3>Sottoscritto del modulo</h3>
+      <p class="hint">Il sottoscritto è l'adulto che dichiara di accompagnare i minori. Per impostazione predefinita è il primo adulto registrato in Alloggiati Web (il "Capo Famiglia" o "Capogruppo").</p>
+      <select id="sottoscritto-select"></select>
+
+      <h3>Minori inclusi nel modulo</h3>
+      <p class="hint">Spunta i minori da includere nella dichiarazione di esenzione. Vengono pre-selezionati automaticamente in base alla data di nascita (sotto i 18 anni al check-in).</p>
+      <div id="minori-list"></div>
+
+      <div class="actions">
+        <button id="back-btn" class="secondary">← Modifica</button>
+        <button id="generate-btn">Genera modulo PDF →</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: Risultato -->
+    <section id="step-3" class="step">
+      <h2>3. Modulo pronto</h2>
+      <p>Il modulo A2 è stato generato con i dati che hai confermato.</p>
+
+      <div id="result-box">
+        <a id="download-link" href="#" download>Scarica il PDF</a>
+      </div>
+
+      <div id="anomalie-box" class="anomalie hidden">
+        <h3>Note</h3>
+        <ul id="anomalie-list"></ul>
+      </div>
+
+      <div class="actions">
+        <button id="restart-btn">Nuova prenotazione</button>
+      </div>
+    </section>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p id="loading-msg">Analisi in corso…</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="hidden">
+      <h3>Errore</h3>
+      <p id="error-msg"></p>
+      <button id="error-close">Chiudi</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>Apartments and Rooms di Sebastiana Randis · I documenti caricati non vengono conservati. <a href="#" id="privacy-link">Informativa</a></p>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
