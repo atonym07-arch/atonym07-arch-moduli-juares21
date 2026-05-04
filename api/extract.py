@@ -48,20 +48,63 @@ Restituisci ESCLUSIVAMENTE un JSON valido in questo formato:
       "nResidenza": "",
       "capResidenza": "",
       "cittadinanza": "...",
-      "numeroDocumento": "..."
+      "numeroDocumento": "...",
+      "tipoDocumento": "..."
     }
   ]
 }
 
+# REGOLA SUL CAMPO "tipoDocumento"
+
+Il campo "tipoDocumento" descrive il tipo di documento che hai esaminato, in italiano, con l'aggettivo del paese emittente. Esempi corretti:
+- "carta di identità italiana"
+- "passaporto italiano"
+- "carta di identità rumena"
+- "passaporto rumeno"
+- "carta di identità polacca"
+- "passaporto polacco"
+- "carta di identità ceca"
+- "carta di identità greca"
+- "passaporto greco"
+- "passaporto indiano"
+- "permesso di soggiorno spagnolo" (per residence permit / tarjeta de residencia)
+- "titolo di viaggio svizzero" (per travel document refugees)
+
+Riconosci il tipo di documento dal layout: passaporti hanno la scritta "PASSPORT/PASSAPORTO/PASZPORT/PASS" + dati strutturati con foto in basso a sinistra. Le carte d'identità hanno layout in formato carta di credito.
+
 # Regole sui campi
 
-1. Per le carte d'identità italiane: il codice fiscale è sul retro. Mettilo in "documento". Se vedi solo il fronte, lascia "documento" vuoto.
-2. Per documenti stranieri: usa il numero del documento (passaporto o ID) in "documento" e anche in "numeroDocumento".
-3. La data di nascita SEMPRE in formato gg/mm/aaaa.
-4. Per le date sui documenti polacchi/ceche/lituani con formato "12.08.1988", convertile in "12/08/1988".
-5. Se un campo non è presente sul documento, lascia stringa vuota "".
-6. Per cognomi composti, accentati o con caratteri speciali, mantieni la grafia esatta del documento (es. "MAŁGORZATA", "JIŘÍ").
-7. NON inferire dati che non vedi - meglio lasciare "" che inventare.
+## REGOLA SUL CAMPO "documento" — CRITICA, leggi attentamente
+
+Il campo "documento" non è sempre il numero del documento. Dipende dalla cittadinanza:
+
+- **Cittadinanza italiana (ITA / CITTADINANZA ITA)**: il valore di "documento" deve essere il **CODICE FISCALE** (16 caratteri alfanumerici, es. "BRBBGT99C47G284G"). Il CF si trova sul retro della CIE italiana, sotto la dicitura "CODICE FISCALE / FISCAL CODE". NON usare mai il numero della CIE (formato tipo "CA12345AB"). Se vedi solo il fronte e non hai il CF, lascia "documento" vuoto — non sostituirlo con il numero CIE.
+- **Cittadinanza straniera (qualsiasi diversa da ITA)**: il valore di "documento" è il **numero del passaporto o della carta d'identità straniera** (es. "X3075510" per un passaporto indiano, "DJL590919" per una ID polacca, "A01222393" per una ID greca).
+
+In entrambi i casi, popola anche il campo "numeroDocumento" con il numero della carta/passaporto, così rimane traccia.
+
+## REGOLA SULL'INDIRIZZO DI RESIDENZA (CIE italiana)
+
+Le carte d'identità italiane formato UE riportano sul retro un campo "INDIRIZZO DI RESIDENZA / RESIDENCE" con un testo del tipo:
+- "VIA NICOLA VACCARO, 110 POTENZA (PZ)"
+- "VIA SIGISMONDO PANTALEO, N. 4 MODUGNO (BA)"
+- "LOCALITA' PLATAMONA, N. 4 SORSO (SS)"
+
+Da questa stringa estrai SEPARATAMENTE:
+- "viaResidenza": la via/piazza/località senza il civico (es. "Via Nicola Vaccaro")
+- "nResidenza": il numero civico (es. "110")
+- "comuneResidenza": il comune (es. "POTENZA")
+- "provinciaResidenza": la sigla in parentesi (es. "PZ")
+- "capResidenza": la CIE NON riporta il CAP — lascia "" (lo aggiungerà l'ospite)
+
+## Altre regole
+
+1. La data di nascita SEMPRE in formato gg/mm/aaaa.
+2. Per le date sui documenti polacchi/ceche/lituani con formato "12.08.1988", convertile in "12/08/1988".
+3. Se un campo non è presente sul documento, lascia stringa vuota "".
+4. Per cognomi composti, accentati o con caratteri speciali, mantieni la grafia esatta del documento (es. "MAŁGORZATA", "JIŘÍ").
+5. NON inferire dati che non vedi - meglio lasciare "" che inventare.
+6. Per il campo "cittadinanza" usa il codice ISO 3 lettere convertito a 2 lettere ufficiali ISO 3166-1 alpha-2: ITA→IT, ROU→RO, BGR→BG, GRC→GR, HUN→HU, POL→PL, CZE→CZ, FRA→FR, BEL→BE, IND→IN, RUS→RU, UKR→UA, LTU→LT, HRV→HR, CHE→CH.
 
 Restituisci SOLO il JSON, senza markdown, senza commenti, senza testo prima o dopo."""
 
@@ -110,6 +153,53 @@ def _merge_persons(a: dict, b: dict) -> dict:
         if not out.get(k) and v:
             out[k] = v
     return out
+
+
+import re
+
+CF_REGEX = re.compile(r'^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$')
+CIE_NUM_REGEX = re.compile(r'^[A-Z]{2}\d{5}[A-Z]{2,3}$')  # es. CA53644LP
+
+
+def looks_like_cf(s: str) -> bool:
+    """True se la stringa ha la forma tipica di un Codice Fiscale italiano (16 char)."""
+    if not s:
+        return False
+    cleaned = s.upper().replace(' ', '')
+    return len(cleaned) == 16 and bool(CF_REGEX.match(cleaned))
+
+
+def looks_like_cie_number(s: str) -> bool:
+    """True se la stringa ha la forma del numero della CIE italiana (es. CA53644LP)."""
+    if not s:
+        return False
+    cleaned = s.upper().replace(' ', '')
+    return bool(CIE_NUM_REGEX.match(cleaned))
+
+
+def is_italian(p: dict) -> bool:
+    """True se il documento è di un cittadino italiano (per regole speciali sul CF)."""
+    cit = (p.get('cittadinanza') or '').upper().strip()
+    if cit in ('IT', 'ITA', 'ITALIAN', 'ITALIANA', 'ITALIA'):
+        return True
+    # Fallback: se il documento sembra un CF italiano, è italiano
+    if looks_like_cf(p.get('documento', '')):
+        return True
+    return False
+
+
+def fix_italian_document_field(p: dict) -> None:
+    """Per cittadini italiani: se 'documento' contiene il numero CIE invece del CF, prova a recuperarlo
+    dal campo 'numeroDocumento' o lo svuota (così il modulo sarà compilato a mano)."""
+    if not is_italian(p):
+        return
+    doc = (p.get('documento') or '').upper().replace(' ', '')
+    if looks_like_cf(doc):
+        return  # già OK
+    if looks_like_cie_number(doc):
+        # Il modello ha messo il numero CIE invece del CF: spostalo nel campo giusto e svuota documento
+        p['numeroDocumento'] = doc
+        p['documento'] = ''
 
 
 def deduplicate_persons(persone: list) -> list:
@@ -214,6 +304,10 @@ class handler(BaseHTTPRequestHandler):
 
             # Deduplicate (rete di sicurezza contro entries duplicate o fantasma)
             persone = deduplicate_persons(persone)
+
+            # Aggiusta documento per cittadini italiani: deve essere il CF, non il numero CIE
+            for p in persone:
+                fix_italian_document_field(p)
 
             # Add minore flag
             for p in persone:
